@@ -5,7 +5,7 @@ import multer from 'multer';
 import rateLimit from 'express-rate-limit';
 import sharp from 'sharp';
 import crypto from 'node:crypto';
-import { mkdirSync, existsSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { openDb } from './db.js';
@@ -39,8 +39,6 @@ const upload = multer({
   limits: { fileSize: UPLOAD_MAX, files: 1 },
 });
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 function requireAdmin(req, res, next) {
   const key = req.get('x-admin-key');
   if (!ADMIN_KEY || key !== ADMIN_KEY) return res.status(401).json({ error: 'unauthorized' });
@@ -54,28 +52,22 @@ app.get('/health', (_req, res) => {
 app.post('/api/submit', submitLimiter, upload.single('photo'), async (req, res) => {
   try {
     const name = String(req.body.name || '').trim().slice(0, 80);
-    const email = String(req.body.email || '').trim().toLowerCase().slice(0, 120);
-    const stickerLabel = String(req.body.sticker_label || '').trim().slice(0, 60);
-    if (!name || !EMAIL_RE.test(email) || !stickerLabel) {
-      return res.status(400).json({ error: 'invalid_input' });
-    }
+    if (!name) return res.status(400).json({ error: 'name_required' });
+    if (!req.file?.buffer) return res.status(400).json({ error: 'photo_required' });
 
     const code = crypto.randomBytes(12).toString('hex');
-    let stickerImage = null;
-    if (req.file?.buffer) {
-      const safe = await sharp(req.file.buffer)
-        .rotate()
-        .resize({ width: 1024, height: 1024, fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 82, mozjpeg: true })
-        .toBuffer();
-      const filename = `${code}.jpg`;
-      await writeFile(path.join(UPLOAD_DIR, filename), safe);
-      stickerImage = `/uploads/${filename}`;
-    }
+    const safe = await sharp(req.file.buffer)
+      .rotate()
+      .resize({ width: 1024, height: 1024, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 82, mozjpeg: true })
+      .toBuffer();
+    const filename = `${code}.jpg`;
+    await writeFile(path.join(UPLOAD_DIR, filename), safe);
+    const stickerImage = `/uploads/${filename}`;
 
     db.prepare(
-      'INSERT INTO participants (code, name, email, sticker_label, sticker_image) VALUES (?, ?, ?, ?, ?)'
-    ).run(code, name, email, stickerLabel, stickerImage);
+      'INSERT INTO participants (code, name, sticker_image) VALUES (?, ?, ?)'
+    ).run(code, name, stickerImage);
 
     res.json({ ok: true, code });
   } catch (err) {
@@ -85,32 +77,18 @@ app.post('/api/submit', submitLimiter, upload.single('photo'), async (req, res) 
 });
 
 app.get('/api/participants', readLimiter, (req, res) => {
-  if (req.query.code) {
-    const code = String(req.query.code).slice(0, 64);
-    const row = db.prepare(
-      'SELECT id, code, name, email, sticker_label, sticker_image, created_at FROM participants WHERE code = ?'
-    ).get(code);
-    return res.json({ count: row ? 1 : 0, participants: row ? [row] : [] });
-  }
-  const filter = req.query.sticker ? String(req.query.sticker).slice(0, 60) : null;
-  const sort = req.query.sort === 'name' ? 'name COLLATE NOCASE ASC'
-             : req.query.sort === 'sticker' ? 'sticker_label COLLATE NOCASE ASC'
-             : 'created_at DESC';
-  const sql = `SELECT id, name, email, sticker_label, sticker_image, created_at
-               FROM participants
-               ${filter ? 'WHERE sticker_label = ?' : ''}
-               ORDER BY ${sort}
-               LIMIT 1000`;
-  const rows = filter ? db.prepare(sql).all(filter) : db.prepare(sql).all();
+  const sort = req.query.sort === 'name'
+    ? 'name COLLATE NOCASE ASC'
+    : 'created_at DESC';
+  const rows = db.prepare(
+    `SELECT id, name, sticker_image, created_at FROM participants ORDER BY ${sort} LIMIT 1000`
+  ).all();
   res.json({ count: rows.length, participants: rows });
 });
 
 app.get('/api/stats', readLimiter, (_req, res) => {
   const total = db.prepare('SELECT COUNT(*) AS n FROM participants').get().n;
-  const byLabel = db.prepare(
-    'SELECT sticker_label, COUNT(*) AS n FROM participants GROUP BY sticker_label ORDER BY n DESC'
-  ).all();
-  res.json({ total, by_sticker: byLabel });
+  res.json({ total });
 });
 
 app.delete('/api/participants/:id', requireAdmin, (req, res) => {

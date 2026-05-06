@@ -12,13 +12,11 @@ export function openDb(path) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       code TEXT UNIQUE NOT NULL,
       name TEXT NOT NULL,
-      email TEXT NOT NULL,
-      sticker_label TEXT NOT NULL,
-      sticker_image TEXT,
+      sticker_image TEXT NOT NULL,
       created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
     );
-    CREATE INDEX IF NOT EXISTS idx_participants_sticker ON participants(sticker_label);
     CREATE INDEX IF NOT EXISTS idx_participants_created ON participants(created_at);
+    CREATE INDEX IF NOT EXISTS idx_participants_name ON participants(name COLLATE NOCASE);
   `);
   return db;
 }

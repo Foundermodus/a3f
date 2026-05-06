@@ -10,32 +10,16 @@
 <body>
   <header class="hero">
     <h1>A3F Sticker Directory</h1>
-    <p class="muted">Zeig deinen Sticker, finde deine Leute.</p>
-    <button id="share-page" class="ghost" type="button" hidden>Diese Seite teilen</button>
+    <p class="muted">Foto vom Sticker hochladen — alle sehen alle.</p>
+    <button id="share-page" class="ghost" type="button">QR-Code anzeigen</button>
   </header>
 
   <main>
-    <section id="profile-card" class="card profile" hidden>
-      <h2>Dein Profil</h2>
-      <div id="profile-tile"></div>
-      <div class="share-row">
-        <button data-share="native" type="button">Teilen…</button>
-        <a id="share-wa" target="_blank" rel="noopener">WhatsApp</a>
-        <a id="share-tg" target="_blank" rel="noopener">Telegram</a>
-        <a id="share-mail">Mail</a>
-        <button data-share="copy" type="button">Link kopieren</button>
-      </div>
-      <div class="qr-wrap"><canvas id="profile-qr" width="180" height="180"></canvas></div>
-      <p id="profile-msg" class="muted" aria-live="polite"></p>
-    </section>
-
     <section class="card">
       <h2>Mitmachen</h2>
       <form id="submit-form" enctype="multipart/form-data">
         <label>Name <input name="name" required maxlength="80" /></label>
-        <label>Email <input name="email" type="email" required maxlength="120" /></label>
-        <label>Sticker-Bezeichnung <input name="sticker_label" required maxlength="60" placeholder="z.B. Elefant Blau" /></label>
-        <label>Foto deines Stickers <input name="photo" type="file" accept="image/*" capture="environment" /></label>
+        <label>Foto deines Stickers <input name="photo" type="file" accept="image/*" capture="environment" required /></label>
         <button type="submit">Eintragen</button>
         <p id="form-msg" class="muted" aria-live="polite"></p>
       </form>
@@ -45,11 +29,10 @@
       <div class="row">
         <h2>Teilnehmer</h2>
         <div class="controls">
-          <input id="filter" placeholder="Filter Sticker…" />
+          <input id="filter" placeholder="Name suchen…" />
           <select id="sort">
             <option value="">Neueste zuerst</option>
             <option value="name">Nach Name</option>
-            <option value="sticker">Nach Sticker</option>
           </select>
         </div>
       </div>
@@ -59,8 +42,8 @@
   </main>
 
   <dialog id="share-dialog">
-    <h3 id="share-dialog-title">Seite teilen</h3>
-    <canvas id="page-qr" width="220" height="220"></canvas>
+    <h3>Diesen QR-Code teilen / drucken</h3>
+    <canvas id="page-qr" width="260" height="260"></canvas>
     <p id="share-dialog-url" class="muted"></p>
     <div class="share-row">
       <a id="page-wa" target="_blank" rel="noopener">WhatsApp</a>
