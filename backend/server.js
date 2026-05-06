@@ -7,7 +7,7 @@ import rateLimit from 'express-rate-limit';
 import sharp from 'sharp';
 import crypto from 'node:crypto';
 import { mkdirSync } from 'node:fs';
-import { writeFile } from 'node:fs/promises';
+import { writeFile, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { openDb } from './db.js';
 
@@ -131,10 +131,15 @@ app.get('/api/stats', readLimiter, (_req, res) => {
   res.json({ total });
 });
 
-app.delete('/api/participants/:id', adminLimiter, requireAdmin, (req, res) => {
+app.delete('/api/participants/:id', adminLimiter, requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'bad_id' });
+  const row = db.prepare('SELECT sticker_image FROM participants WHERE id = ?').get(id);
   const info = db.prepare('DELETE FROM participants WHERE id = ?').run(id);
+  if (row?.sticker_image?.startsWith('/uploads/')) {
+    const file = path.join(UPLOAD_DIR, path.basename(row.sticker_image));
+    try { await unlink(file); } catch { /* file already gone */ }
+  }
   res.json({ ok: true, deleted: info.changes });
 });
 
