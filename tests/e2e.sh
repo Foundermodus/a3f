@@ -11,7 +11,7 @@ API="${API:-https://albumyoo.taile438b2.ts.net}"
 PAGES="${PAGES:-https://foundermodus.github.io/a3f}"
 ORIGIN="${ORIGIN:-https://foundermodus.github.io}"
 RESOLVE="--resolve albumyoo.taile438b2.ts.net:443:$PUB_IP"
-THROTTLE="${THROTTLE:-13}"   # seconds between submits (5/min => 12s; 13 for headroom)
+THROTTLE="${THROTTLE:-16}"   # seconds between submits — keeps us safely under 5/min
 
 if [[ -z "${ADMIN_KEY:-}" ]]; then
   ADMIN_KEY=$(ssh -o BatchMode=yes albumyoo 'sudo grep ^ADMIN_KEY /opt/a3f/backend/.env | cut -d= -f2' 2>/dev/null)
@@ -102,7 +102,8 @@ RESP=$(submit -F "name=$TP-Contact" -F "email=t@t.de" -F "phone=+41 79 000 00 00
 echo "$RESP" | grep -q '"ok":true' && ok "name+email+phone → ok" || fail "contact" "$RESP"
 
 echo ""
-echo "[7] Validation (these intentionally hit rate-limit; throttle bypassed)"
+echo "[7] Validation"
+# Validation runs ALSO go through rate-limit, so throttle them too
 RESP=$(submit)
 { echo "$RESP" | grep -q name_required; } && ok "no name → name_required" || fail "no name" "$RESP"
 
@@ -119,8 +120,8 @@ RESP1=$(submit -H "X-Idempotency-Key: $IDEM" -F "name=$TP-Idem" -F "photo=@/tmp/
 CODE1=$(echo "$RESP1" | python3 -c "import sys,json; print(json.load(sys.stdin).get('code',''))")
 [[ -n "$CODE1" ]] && ok "1st submit (idem) → ok" || fail "idem 1st" "$RESP1"
 
-# 2nd submit with same key (no throttle — idempotent should bypass insert)
-RESP2=$(curl -sS $RESOLVE -X POST "$API/api/submit" -H "Origin: $ORIGIN" -H "X-Idempotency-Key: $IDEM" -F "name=$TP-Idem-Variant" -F "photo=@/tmp/p2.jpg;type=image/jpeg")
+# 2nd submit with same key — also throttled (rate-limit fires before idem check)
+RESP2=$(submit -H "X-Idempotency-Key: $IDEM" -F "name=$TP-Idem-Variant" -F "photo=@/tmp/p2.jpg;type=image/jpeg")
 CODE2=$(echo "$RESP2" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('code',''))")
 DUP=$(echo "$RESP2" | python3 -c "import sys,json; print(json.load(sys.stdin).get('duplicate',False))")
 [[ "$CODE1" == "$CODE2" && "$DUP" == "True" ]] && ok "2nd same-key → same code, duplicate:true" || fail "idem 2nd" "code1=$CODE1 code2=$CODE2 dup=$DUP"
@@ -177,14 +178,14 @@ REMAINING=$(curl -sS $RESOLVE "$API/api/participants" | python3 -c "import sys,j
 KEPT=$(curl -sS $RESOLVE "$API/api/participants" | python3 -c "import sys,json; print(len(json.load(sys.stdin)['participants']))")
 ok "preserved $KEPT non-test rows"
 
-# Orphan-file check (test rows only)
+# Orphan-file check (counts full + thumb refs)
 LEFT=$(ssh -o BatchMode=yes albumyoo "ls /opt/a3f/backend/uploads/*.jpg 2>/dev/null | wc -l")
 EXPECTED=$(curl -sS $RESOLVE "$API/api/participants" | python3 -c "
 import sys,json
 n=0
 for p in json.load(sys.stdin)['participants']:
-  if p.get('sticker_image'):  n+=1
-  if p.get('sticker_image2'): n+=1
+  for k in ('sticker_image','sticker_image2','sticker_thumb','sticker_thumb2'):
+    if p.get(k): n+=1
 print(n)")
 [[ "$LEFT" == "$EXPECTED" ]] && ok "uploads/ orphan-frei ($LEFT files = $EXPECTED DB refs)" || fail "orphans" "$LEFT files vs $EXPECTED DB refs"
 
