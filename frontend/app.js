@@ -153,11 +153,17 @@ sharePageBtn.addEventListener('click', async () => {
   if (typeof shareDialog.showModal === 'function') shareDialog.showModal();
   else shareDialog.setAttribute('open', '');
 });
+function closeShareDialog() {
+  if (typeof shareDialog.close === 'function') shareDialog.close();
+  else shareDialog.removeAttribute('open');
+}
 shareDialog.addEventListener('click', (ev) => {
-  if (ev.target.dataset?.share === 'page-copy') {
-    copyToClipboard(shareDialog.dataset.url, $('#share-dialog-url'));
-  }
+  const action = ev.target.dataset?.share || (ev.target.id === 'share-close-x' ? 'page-close' : null);
+  if (action === 'page-copy') copyToClipboard(shareDialog.dataset.url, $('#share-dialog-url'));
+  else if (action === 'page-close') closeShareDialog();
+  else if (ev.target === shareDialog) closeShareDialog();   // backdrop click
 });
+shareDialog.addEventListener('cancel', closeShareDialog);   // Esc key
 
 loadParticipants();
 loadStats();

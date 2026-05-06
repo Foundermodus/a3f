@@ -44,8 +44,9 @@
     </section>
   </main>
 
-  <dialog id="share-dialog">
-    <h3>Diesen QR-Code teilen / drucken</h3>
+  <dialog id="share-dialog" aria-labelledby="share-dialog-title">
+    <button id="share-close-x" class="close-x" type="button" aria-label="Schliessen">×</button>
+    <h3 id="share-dialog-title">Diesen QR-Code teilen / drucken</h3>
     <canvas id="page-qr" width="260" height="260"></canvas>
     <p id="share-dialog-url" class="muted"></p>
     <div class="share-row">
@@ -53,7 +54,7 @@
       <a id="page-tg" target="_blank" rel="noopener">Telegram</a>
       <a id="page-mail">Mail</a>
       <button data-share="page-copy" type="button">Link kopieren</button>
-      <button value="cancel" formmethod="dialog">Schliessen</button>
+      <button data-share="page-close" type="button">Schliessen</button>
     </div>
   </dialog>
 
