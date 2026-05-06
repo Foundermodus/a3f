@@ -1,0 +1,77 @@
+:root {
+  --bg: #0e1116;
+  --fg: #e8eaed;
+  --muted: #9aa0a6;
+  --accent: #ff6b6b;
+  --card: #161b22;
+  --border: #30363d;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  line-height: 1.5;
+}
+.hero {
+  padding: 2rem 1rem;
+  text-align: center;
+  background: linear-gradient(135deg, #1a1f2e, #0e1116);
+  border-bottom: 1px solid var(--border);
+}
+.hero h1 { margin: 0 0 .25rem; font-size: 2rem; }
+main { max-width: 960px; margin: 1.5rem auto; padding: 0 1rem; display: grid; gap: 1.5rem; }
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+h2 { margin: 0 0 1rem; font-size: 1.15rem; }
+.muted { color: var(--muted); font-size: .9rem; }
+form { display: grid; gap: .75rem; }
+label { display: grid; gap: .25rem; font-size: .9rem; color: var(--muted); }
+input, select, button {
+  font: inherit;
+  padding: .55rem .7rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #0b0e13;
+  color: var(--fg);
+}
+button {
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  cursor: pointer;
+  padding: .65rem 1rem;
+  font-weight: 600;
+}
+button:hover { filter: brightness(1.1); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.controls { display: flex; gap: .5rem; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: .75rem;
+}
+.tile {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0b0e13;
+  display: flex;
+  flex-direction: column;
+}
+.tile img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  background: #222;
+}
+.tile .meta { padding: .5rem .65rem; font-size: .85rem; }
+.tile .label { color: var(--accent); font-weight: 600; }
+.tile .name { font-weight: 600; }
+.tile .email { color: var(--muted); font-size: .78rem; word-break: break-all; }
+footer { text-align: center; padding: 1.5rem; }

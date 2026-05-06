@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>A3F — Sticker Directory</title>
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="manifest" href="./manifest.json" />
+</head>
+<body>
+  <header class="hero">
+    <h1>A3F Sticker Directory</h1>
+    <p class="muted">Zeig deinen Sticker, finde deine Leute.</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Mitmachen</h2>
+      <form id="submit-form" enctype="multipart/form-data">
+        <label>Name <input name="name" required maxlength="80" /></label>
+        <label>Email <input name="email" type="email" required maxlength="120" /></label>
+        <label>Sticker-Bezeichnung <input name="sticker_label" required maxlength="60" placeholder="z.B. Elefant Blau" /></label>
+        <label>Foto deines Stickers <input name="photo" type="file" accept="image/*" capture="environment" /></label>
+        <button type="submit">Eintragen</button>
+        <p id="form-msg" class="muted" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="row">
+        <h2>Teilnehmer</h2>
+        <div class="controls">
+          <input id="filter" placeholder="Filter Sticker…" />
+          <select id="sort">
+            <option value="">Neueste zuerst</option>
+            <option value="name">Nach Name</option>
+            <option value="sticker">Nach Sticker</option>
+          </select>
+        </div>
+      </div>
+      <div id="grid" class="grid"></div>
+      <p id="list-msg" class="muted"></p>
+    </section>
+  </main>
+
+  <footer class="muted">
+    <span id="stats"></span>
+  </footer>
+
+  <script src="./config.js"></script>
+  <script src="./app.js" type="module"></script>
+</body>
+</html>
