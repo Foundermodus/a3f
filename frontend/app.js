@@ -92,8 +92,24 @@ function render() {
     img.src = imgUrl(p);
     const meta = document.createElement('div');
     meta.className = 'meta';
-    meta.innerHTML = `<div class="name"></div>`;
-    meta.querySelector('.name').textContent = p.name;
+    const nameEl = document.createElement('div');
+    nameEl.className = 'name';
+    nameEl.textContent = p.name;
+    meta.append(nameEl);
+    if (p.email) {
+      const a = document.createElement('a');
+      a.className = 'contact';
+      a.href = `mailto:${p.email}`;
+      a.textContent = p.email;
+      meta.append(a);
+    }
+    if (p.phone) {
+      const a = document.createElement('a');
+      a.className = 'contact';
+      a.href = `tel:${p.phone.replace(/[^+0-9]/g, '')}`;
+      a.textContent = p.phone;
+      meta.append(a);
+    }
     tile.append(img, meta);
     grid.append(tile);
   }

@@ -87,9 +87,14 @@ app.get('/health', (_req, res) => {
 
 app.post('/api/submit', submitLimiter, upload.single('photo'), async (req, res) => {
   try {
-    const name = String(req.body.name || "").replace(/[\x00-\x1f\x7f]/g, "").trim().slice(0, 80);
+    const sanitize = (s, max) => String(s || '').replace(/[\x00-\x1f\x7f]/g, '').trim().slice(0, max);
+    const name  = sanitize(req.body.name, 80);
+    const email = sanitize(req.body.email, 120).toLowerCase();
+    const phone = sanitize(req.body.phone, 30);
     if (!name) return res.status(400).json({ error: 'name_required' });
     if (!req.file?.buffer) return res.status(400).json({ error: 'photo_required' });
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'invalid_email' });
+    if (phone && !/^[+0-9 ()/.-]{4,30}$/.test(phone)) return res.status(400).json({ error: 'invalid_phone' });
 
     const code = crypto.randomBytes(12).toString('hex');
     const safe = await sharp(req.file.buffer, { limitInputPixels: 24_000_000, failOn: 'error' })
@@ -104,8 +109,8 @@ app.post('/api/submit', submitLimiter, upload.single('photo'), async (req, res) 
     const stickerImage = `/uploads/${filename}`;
 
     db.prepare(
-      'INSERT INTO participants (code, name, sticker_image) VALUES (?, ?, ?)'
-    ).run(code, name, stickerImage);
+      'INSERT INTO participants (code, name, email, phone, sticker_image) VALUES (?, ?, ?, ?, ?)'
+    ).run(code, name, email || null, phone || null, stickerImage);
 
     res.json({ ok: true, code });
   } catch (err) {
@@ -121,7 +126,7 @@ app.get('/api/participants', readLimiter, (req, res) => {
     ? 'name COLLATE NOCASE ASC'
     : 'created_at DESC';
   const rows = db.prepare(
-    `SELECT id, name, sticker_image, created_at FROM participants ORDER BY ${sort} LIMIT 1000`
+    `SELECT id, name, email, phone, sticker_image, created_at FROM participants ORDER BY ${sort} LIMIT 1000`
   ).all();
   res.json({ count: rows.length, participants: rows });
 });

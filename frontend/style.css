@@ -73,7 +73,16 @@ button:hover { filter: brightness(1.1); }
 .tile .meta { padding: .5rem .65rem; font-size: .85rem; }
 .tile .label { color: var(--accent); font-weight: 600; }
 .tile .name { font-weight: 600; }
-.tile .email { color: var(--muted); font-size: .78rem; word-break: break-all; }
+.tile .contact {
+  display: block;
+  color: var(--muted);
+  font-size: .78rem;
+  text-decoration: none;
+  word-break: break-all;
+  margin-top: .15rem;
+}
+.tile .contact:hover { color: var(--accent); }
+.hint { color: var(--muted); font-size: .8em; font-weight: normal; }
 footer { text-align: center; padding: 1.5rem; }
 
 button.ghost {

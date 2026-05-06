@@ -18,5 +18,9 @@ export function openDb(path) {
     CREATE INDEX IF NOT EXISTS idx_participants_created ON participants(created_at);
     CREATE INDEX IF NOT EXISTS idx_participants_name ON participants(name COLLATE NOCASE);
   `);
+  // Idempotent migrations (SQLite has no IF NOT EXISTS for ADD COLUMN)
+  const cols = new Set(db.prepare("PRAGMA table_info(participants)").all().map(r => r.name));
+  if (!cols.has('email')) db.exec("ALTER TABLE participants ADD COLUMN email TEXT");
+  if (!cols.has('phone')) db.exec("ALTER TABLE participants ADD COLUMN phone TEXT");
   return db;
 }
