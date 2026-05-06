@@ -102,6 +102,11 @@ RESP=$(submit -F "name=$TP-Contact" -F "email=t@t.de" -F "phone=+41 79 000 00 00
 echo "$RESP" | grep -q '"ok":true' && ok "name+email+phone → ok" || fail "contact" "$RESP"
 
 echo ""
+echo "(waiting 65s to reset rate-limit window before validation/idem tests)"
+sleep 65
+last_submit=0
+
+echo ""
 echo "[7] Validation"
 # Validation runs ALSO go through rate-limit, so throttle them too
 RESP=$(submit)
@@ -112,6 +117,11 @@ RESP=$(submit -F "name=$TP-X" -F "email=invalid")
 
 RESP=$(submit -F "name=$TP-X" -F "phone=hello")
 { echo "$RESP" | grep -q invalid_phone; } && ok "bad phone → invalid_phone" || fail "bad phone" "$RESP"
+
+echo ""
+echo "(waiting 65s to reset rate-limit window before idempotency tests)"
+sleep 65
+last_submit=0
 
 echo ""
 echo "[7b] Idempotency / dedup"
