@@ -25,6 +25,8 @@ export function openDb(path) {
   if (!cols.has('phone'))          db.exec("ALTER TABLE participants ADD COLUMN phone TEXT");
   if (!cols.has('sticker_image2')) db.exec("ALTER TABLE participants ADD COLUMN sticker_image2 TEXT");
   if (!cols.has('idem_key'))       db.exec("ALTER TABLE participants ADD COLUMN idem_key TEXT");
+  if (!cols.has('sticker_thumb'))  db.exec("ALTER TABLE participants ADD COLUMN sticker_thumb TEXT");
+  if (!cols.has('sticker_thumb2')) db.exec("ALTER TABLE participants ADD COLUMN sticker_thumb2 TEXT");
   db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_participants_idem ON participants(idem_key) WHERE idem_key IS NOT NULL");
   // Drop NOT NULL on sticker_image if still present (table-rebuild dance)
   const sticker = info.find(r => r.name === 'sticker_image');

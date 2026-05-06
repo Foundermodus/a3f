@@ -113,6 +113,23 @@ RESP=$(submit -F "name=$TP-X" -F "phone=hello")
 { echo "$RESP" | grep -q invalid_phone; } && ok "bad phone → invalid_phone" || fail "bad phone" "$RESP"
 
 echo ""
+echo "[7b] Idempotency / dedup"
+IDEM="$TP-idem-$(date +%s)"
+RESP1=$(submit -H "X-Idempotency-Key: $IDEM" -F "name=$TP-Idem" -F "photo=@/tmp/p1.jpg;type=image/jpeg")
+CODE1=$(echo "$RESP1" | python3 -c "import sys,json; print(json.load(sys.stdin).get('code',''))")
+[[ -n "$CODE1" ]] && ok "1st submit (idem) → ok" || fail "idem 1st" "$RESP1"
+
+# 2nd submit with same key (no throttle — idempotent should bypass insert)
+RESP2=$(curl -sS $RESOLVE -X POST "$API/api/submit" -H "Origin: $ORIGIN" -H "X-Idempotency-Key: $IDEM" -F "name=$TP-Idem-Variant" -F "photo=@/tmp/p2.jpg;type=image/jpeg")
+CODE2=$(echo "$RESP2" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('code',''))")
+DUP=$(echo "$RESP2" | python3 -c "import sys,json; print(json.load(sys.stdin).get('duplicate',False))")
+[[ "$CODE1" == "$CODE2" && "$DUP" == "True" ]] && ok "2nd same-key → same code, duplicate:true" || fail "idem 2nd" "code1=$CODE1 code2=$CODE2 dup=$DUP"
+
+# Verify no extra row
+COUNT=$(curl -sS $RESOLVE "$API/api/participants" | python3 -c "import sys,json; print(len([p for p in json.load(sys.stdin)['participants'] if p['name']=='$TP-Idem']))")
+[[ "$COUNT" == "1" ]] && ok "only 1 row exists for idem-key" || fail "idem dedup" "rows=$COUNT"
+
+echo ""
 echo "[8] List shows expected field combinations"
 LIST=$(curl -sS $RESOLVE "$API/api/participants")
 echo "$LIST" | python3 -c "

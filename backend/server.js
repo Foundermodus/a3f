@@ -67,14 +67,15 @@ const upload = multer({
   },
 });
 
-async function processPhoto(buffer, dest) {
-  const safe = await sharp(buffer, { limitInputPixels: 24_000_000, failOn: 'error' })
-    .rotate()
-    .resize({ width: 1024, height: 1024, fit: 'inside', withoutEnlargement: true })
-    .jpeg({ quality: 82, mozjpeg: true })
-    .withMetadata({})
-    .toBuffer();
-  await writeFile(dest, safe);
+async function processPhoto(buffer, fullDest, thumbDest) {
+  const pipeline = sharp(buffer, { limitInputPixels: 24_000_000, failOn: 'error' }).rotate();
+  const [full, thumb] = await Promise.all([
+    pipeline.clone().resize({ width: 1024, height: 1024, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 82, mozjpeg: true }).withMetadata({}).toBuffer(),
+    pipeline.clone().resize({ width: 256, height: 256, fit: 'cover' })
+      .jpeg({ quality: 72, mozjpeg: true }).withMetadata({}).toBuffer(),
+  ]);
+  await Promise.all([writeFile(fullDest, full), writeFile(thumbDest, thumb)]);
 }
 
 function timingSafeEqStr(a, b) {
@@ -119,27 +120,36 @@ app.post('/api/submit', submitLimiter, upload.fields([
     }
 
     const code = crypto.randomBytes(12).toString('hex');
-    let stickerImage = null;
+    let stickerImage = null, stickerThumb = null;
     if (photo1?.buffer) {
-      await processPhoto(photo1.buffer, path.join(UPLOAD_DIR, `${code}.jpg`));
+      await processPhoto(
+        photo1.buffer,
+        path.join(UPLOAD_DIR, `${code}.jpg`),
+        path.join(UPLOAD_DIR, `${code}-thumb.jpg`),
+      );
       stickerImage = `/uploads/${code}.jpg`;
+      stickerThumb = `/uploads/${code}-thumb.jpg`;
     }
-    let stickerImage2 = null;
+    let stickerImage2 = null, stickerThumb2 = null;
     if (photo2?.buffer) {
-      await processPhoto(photo2.buffer, path.join(UPLOAD_DIR, `${code}-2.jpg`));
+      await processPhoto(
+        photo2.buffer,
+        path.join(UPLOAD_DIR, `${code}-2.jpg`),
+        path.join(UPLOAD_DIR, `${code}-2-thumb.jpg`),
+      );
       stickerImage2 = `/uploads/${code}-2.jpg`;
+      stickerThumb2 = `/uploads/${code}-2-thumb.jpg`;
     }
 
     try {
       db.prepare(
-        'INSERT INTO participants (code, name, email, phone, sticker_image, sticker_image2, idem_key) VALUES (?, ?, ?, ?, ?, ?, ?)'
-      ).run(code, name, email || null, phone || null, stickerImage, stickerImage2, idemKey || null);
+        'INSERT INTO participants (code, name, email, phone, sticker_image, sticker_image2, sticker_thumb, sticker_thumb2, idem_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      ).run(code, name, email || null, phone || null, stickerImage, stickerImage2, stickerThumb, stickerThumb2, idemKey || null);
     } catch (e) {
       // race: another concurrent request with the same idem_key won
       if (idemKey && /UNIQUE/.test(e.message)) {
         const existing = db.prepare('SELECT code FROM participants WHERE idem_key = ?').get(idemKey);
-        // remove the just-saved orphan files
-        for (const p of [stickerImage, stickerImage2]) {
+        for (const p of [stickerImage, stickerImage2, stickerThumb, stickerThumb2]) {
           if (p?.startsWith('/uploads/')) {
             try { await unlink(path.join(UPLOAD_DIR, path.basename(p))); } catch {}
           }
@@ -163,7 +173,7 @@ app.get('/api/participants', readLimiter, (req, res) => {
     ? 'name COLLATE NOCASE ASC'
     : 'created_at DESC';
   const rows = db.prepare(
-    `SELECT id, name, email, phone, sticker_image, sticker_image2, created_at FROM participants ORDER BY ${sort} LIMIT 1000`
+    `SELECT id, name, email, phone, sticker_image, sticker_image2, sticker_thumb, sticker_thumb2, created_at FROM participants ORDER BY ${sort} LIMIT 1000`
   ).all();
   res.json({ count: rows.length, participants: rows });
 });
@@ -176,9 +186,9 @@ app.get('/api/stats', readLimiter, (_req, res) => {
 app.delete('/api/participants/:id', adminLimiter, requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'bad_id' });
-  const row = db.prepare('SELECT sticker_image, sticker_image2 FROM participants WHERE id = ?').get(id);
+  const row = db.prepare('SELECT sticker_image, sticker_image2, sticker_thumb, sticker_thumb2 FROM participants WHERE id = ?').get(id);
   const info = db.prepare('DELETE FROM participants WHERE id = ?').run(id);
-  for (const p of [row?.sticker_image, row?.sticker_image2]) {
+  for (const p of [row?.sticker_image, row?.sticker_image2, row?.sticker_thumb, row?.sticker_thumb2]) {
     if (p?.startsWith('/uploads/')) {
       try { await unlink(path.join(UPLOAD_DIR, path.basename(p))); } catch { /* file already gone */ }
     }

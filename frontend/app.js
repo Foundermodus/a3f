@@ -116,14 +116,22 @@ function render() {
   for (const p of list) {
     const tile = document.createElement('article');
     tile.className = 'tile';
-    const sources = [p.sticker_image, p.sticker_image2].filter(Boolean);
+    const pairs = [
+      [p.sticker_thumb || p.sticker_image, p.sticker_image],
+      [p.sticker_thumb2 || p.sticker_image2, p.sticker_image2],
+    ].filter(([t, _]) => t);
     const photos = document.createElement('div');
-    photos.className = sources.length === 2 ? 'photos two' : sources.length === 1 ? 'photos' : 'photos none';
-    for (const src of sources) {
+    photos.className = pairs.length === 2 ? 'photos two' : pairs.length === 1 ? 'photos' : 'photos none';
+    for (const [thumb, full] of pairs) {
       const img = document.createElement('img');
       img.loading = 'lazy';
+      img.decoding = 'async';
       img.alt = p.name;
-      img.src = imgUrl(src);
+      img.src = imgUrl(thumb);
+      if (full && full !== thumb) {
+        img.dataset.full = imgUrl(full);
+        img.style.cursor = 'zoom-in';
+      }
       photos.append(img);
     }
     const meta = document.createElement('div');
@@ -216,6 +224,28 @@ shareDialog.addEventListener('click', (ev) => {
   else if (ev.target === shareDialog) closeShareDialog();   // backdrop click
 });
 shareDialog.addEventListener('cancel', closeShareDialog);   // Esc key
+
+// Lightbox: click on a tile thumbnail opens the full image
+const lightbox = $('#lightbox');
+const lightboxImg = $('#lightbox-img');
+function openLightbox(src) {
+  lightboxImg.src = src;
+  lightbox.hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+  lightbox.hidden = true;
+  lightboxImg.removeAttribute('src');
+  document.body.style.overflow = '';
+}
+grid.addEventListener('click', (ev) => {
+  const img = ev.target.closest('img[data-full]');
+  if (img) openLightbox(img.dataset.full);
+});
+lightbox.addEventListener('click', closeLightbox);
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape' && !lightbox.hidden) closeLightbox();
+});
 
 loadParticipants();
 loadStats();
