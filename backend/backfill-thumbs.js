@@ -1,10 +1,10 @@
-// Backfill thumbnails for participants that were uploaded before the thumb feature.
-// Run on the server: cd /opt/a3f/backend && node ../deploy/backfill-thumbs.js
+// Backfill thumbnails for participants uploaded before the thumb feature.
+// Run on the server: cd /opt/a3f/backend && node backfill-thumbs.js
 import 'dotenv/config';
 import sharp from 'sharp';
 import path from 'node:path';
 import { readFile, writeFile } from 'node:fs/promises';
-import { openDb } from '../backend/db.js';
+import { openDb } from './db.js';
 
 const DB_PATH    = process.env.DB_PATH    || './data/a3f.db';
 const UPLOAD_DIR = process.env.UPLOAD_DIR || './uploads';
