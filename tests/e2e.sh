@@ -130,7 +130,7 @@ COUNT=$(curl -sS $RESOLVE "$API/api/participants" | python3 -c "import sys,json;
 [[ "$COUNT" == "1" ]] && ok "only 1 row exists for idem-key" || fail "idem dedup" "rows=$COUNT"
 
 echo ""
-echo "[8] List shows expected field combinations"
+echo "[8] List shows expected field combinations + thumbnails"
 LIST=$(curl -sS $RESOLVE "$API/api/participants")
 echo "$LIST" | python3 -c "
 import sys,json
@@ -142,10 +142,24 @@ missing=[n for n in need if n not in by]
 if missing: print('MISSING:', missing); sys.exit(1)
 assert by['$TP-NameOnly']['sticker_image'] is None and by['$TP-NameOnly']['sticker_image2'] is None, 'NameOnly photos should be null'
 assert by['$TP-OnePhoto']['sticker_image'] and by['$TP-OnePhoto']['sticker_image2'] is None,         'OnePhoto: only 1st'
+assert by['$TP-OnePhoto']['sticker_thumb'],                                                          'OnePhoto must have thumb'
 assert by['$TP-TwoPhotos']['sticker_image'] and by['$TP-TwoPhotos']['sticker_image2'],               'TwoPhotos: both set'
+assert by['$TP-TwoPhotos']['sticker_thumb'] and by['$TP-TwoPhotos']['sticker_thumb2'],               'TwoPhotos must have both thumbs'
 assert by['$TP-Contact']['email']=='t@t.de' and by['$TP-Contact']['phone']=='+41 79 000 00 00',     'Contact email/phone'
 assert by['$TP-Contact']['sticker_image'] is None,                                                  'Contact has no photo'
-print('OK')" >/dev/null && ok "field combinations verified" || fail "field combos" "see python output"
+print('OK')" >/dev/null && ok "field combinations + thumbs verified" || fail "field combos" "see python output"
+
+echo ""
+echo "[8b] Thumbnail size sanity (should be smaller than original)"
+THUMB_URL=$(echo "$LIST" | python3 -c "
+import sys,json
+ours=[p for p in json.load(sys.stdin)['participants'] if p['name']=='$TP-OnePhoto']
+print(ours[0]['sticker_thumb'])")
+THUMB_BYTES=$(curl -sI $RESOLVE "$API$THUMB_URL" | grep -i content-length | awk '{print $2}' | tr -d '\r')
+FULL_URL=$(echo "$THUMB_URL" | sed 's/-thumb//')
+FULL_BYTES=$(curl -sI $RESOLVE "$API$FULL_URL" | grep -i content-length | awk '{print $2}' | tr -d '\r')
+echo "  thumb=$THUMB_BYTES bytes, full=$FULL_BYTES bytes"
+[[ -n "$THUMB_BYTES" && -n "$FULL_BYTES" && "$THUMB_BYTES" -lt "$FULL_BYTES" ]] && ok "thumb < full ($THUMB_BYTES < $FULL_BYTES)" || fail "thumb size" "$THUMB_BYTES vs $FULL_BYTES"
 
 echo ""
 echo "[9] Cleanup ONLY our test rows (preserve real user data)"
