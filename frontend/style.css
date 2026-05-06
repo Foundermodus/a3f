@@ -71,6 +71,7 @@ button:hover { filter: brightness(1.1); }
   background: #222;
 }
 .tile .photos.two { grid-template-columns: 1fr 1fr; }
+.tile .photos.none { display: none; }
 .tile .photos img {
   width: 100%;
   aspect-ratio: 1;

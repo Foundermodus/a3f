@@ -107,13 +107,15 @@ app.post('/api/submit', submitLimiter, upload.fields([
     const photo1 = req.files?.photo?.[0];
     const photo2 = req.files?.photo2?.[0];
     if (!name) return res.status(400).json({ error: 'name_required' });
-    if (!photo1?.buffer) return res.status(400).json({ error: 'photo_required' });
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'invalid_email' });
     if (phone && !/^[+0-9 ()/.-]{4,30}$/.test(phone)) return res.status(400).json({ error: 'invalid_phone' });
 
     const code = crypto.randomBytes(12).toString('hex');
-    await processPhoto(photo1.buffer, path.join(UPLOAD_DIR, `${code}.jpg`));
-    const stickerImage = `/uploads/${code}.jpg`;
+    let stickerImage = null;
+    if (photo1?.buffer) {
+      await processPhoto(photo1.buffer, path.join(UPLOAD_DIR, `${code}.jpg`));
+      stickerImage = `/uploads/${code}.jpg`;
+    }
     let stickerImage2 = null;
     if (photo2?.buffer) {
       await processPhoto(photo2.buffer, path.join(UPLOAD_DIR, `${code}-2.jpg`));

@@ -86,9 +86,10 @@ function render() {
   for (const p of list) {
     const tile = document.createElement('article');
     tile.className = 'tile';
+    const sources = [p.sticker_image, p.sticker_image2].filter(Boolean);
     const photos = document.createElement('div');
-    photos.className = p.sticker_image2 ? 'photos two' : 'photos';
-    for (const src of [p.sticker_image, p.sticker_image2].filter(Boolean)) {
+    photos.className = sources.length === 2 ? 'photos two' : sources.length === 1 ? 'photos' : 'photos none';
+    for (const src of sources) {
       const img = document.createElement('img');
       img.loading = 'lazy';
       img.alt = p.name;
