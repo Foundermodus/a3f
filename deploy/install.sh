@@ -32,6 +32,8 @@ if [[ ! -f "$APP_DIR/backend/.env" ]]; then
   sed -i "s|ADMIN_KEY=.*|ADMIN_KEY=$ADMIN_KEY|" "$APP_DIR/backend/.env"
   echo ">> generated ADMIN_KEY in $APP_DIR/backend/.env"
 fi
+chmod 600 "$APP_DIR/backend/.env"
+chown "$RUN_USER:$RUN_USER" "$APP_DIR/backend/.env"
 
 # 4. Dependencies
 mkdir -p "$APP_DIR/backend/data" "$APP_DIR/backend/uploads"
