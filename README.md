@@ -54,6 +54,14 @@ Security:
 2. Push to `main` — GitHub Actions deploys to Pages.
 3. Enable Pages: Settings → Pages → Source: GitHub Actions.
 
+### Share flow
+
+- After signup, the participant lands on `?u=<code>` with their card pinned at the top.
+- Share buttons: native Web Share (mobile one-tap), WhatsApp, Telegram, Mail, Copy link.
+- A QR code is rendered for showing on a phone screen / printing.
+- Page-level "Diese Seite teilen" button on the header for sharing the directory itself.
+- The participant code is also persisted to `localStorage` so returning visitors see their profile pinned.
+
 ## License
 
 MIT

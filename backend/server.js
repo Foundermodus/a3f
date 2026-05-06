@@ -85,6 +85,13 @@ app.post('/api/submit', submitLimiter, upload.single('photo'), async (req, res) 
 });
 
 app.get('/api/participants', readLimiter, (req, res) => {
+  if (req.query.code) {
+    const code = String(req.query.code).slice(0, 64);
+    const row = db.prepare(
+      'SELECT id, code, name, email, sticker_label, sticker_image, created_at FROM participants WHERE code = ?'
+    ).get(code);
+    return res.json({ count: row ? 1 : 0, participants: row ? [row] : [] });
+  }
   const filter = req.query.sticker ? String(req.query.sticker).slice(0, 60) : null;
   const sort = req.query.sort === 'name' ? 'name COLLATE NOCASE ASC'
              : req.query.sort === 'sticker' ? 'sticker_label COLLATE NOCASE ASC'

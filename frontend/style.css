@@ -75,3 +75,46 @@ button:hover { filter: brightness(1.1); }
 .tile .name { font-weight: 600; }
 .tile .email { color: var(--muted); font-size: .78rem; word-break: break-all; }
 footer { text-align: center; padding: 1.5rem; }
+
+button.ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--fg);
+  margin-top: .75rem;
+  padding: .4rem .9rem;
+  font-weight: 500;
+}
+.profile { border-color: var(--accent); }
+#profile-tile { max-width: 220px; margin: 0 auto 1rem; }
+.share-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin: .75rem 0;
+  justify-content: center;
+}
+.share-row a, .share-row button {
+  font: inherit;
+  padding: .45rem .9rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #0b0e13;
+  color: var(--fg);
+  text-decoration: none;
+  cursor: pointer;
+}
+.share-row [data-share="native"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.qr-wrap { display: flex; justify-content: center; padding: .5rem 0; }
+.qr-wrap canvas { background: #fff; border-radius: 8px; padding: .25rem; }
+dialog#share-dialog {
+  background: var(--card);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  max-width: 320px;
+}
+dialog#share-dialog::backdrop { background: rgba(0,0,0,.6); }
+dialog#share-dialog h3 { margin: 0 0 .75rem; }
+#share-dialog-url { word-break: break-all; font-size: .8rem; }
+
