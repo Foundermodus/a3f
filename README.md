@@ -30,6 +30,15 @@ a3f/
 
 ## Backend (albumyoo)
 
+One-shot install (see [deploy/README.md](deploy/README.md)):
+
+```bash
+sudo git clone https://github.com/Foundermodus/a3f.git /opt/a3f
+sudo bash /opt/a3f/deploy/install.sh
+```
+
+Manual run for local dev:
+
 ```bash
 cd backend
 cp .env.example .env

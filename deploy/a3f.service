@@ -1,0 +1,34 @@
+[Unit]
+Description=A3F Sticker Directory backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=a3f
+Group=a3f
+WorkingDirectory=/opt/a3f/backend
+EnvironmentFile=/opt/a3f/backend/.env
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+# Hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/a3f/backend/data /opt/a3f/backend/uploads
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+
+[Install]
+WantedBy=multi-user.target
