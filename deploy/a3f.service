@@ -27,8 +27,8 @@ ProtectControlGroups=yes
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 RestrictNamespaces=yes
 LockPersonality=yes
-MemoryDenyWriteExecute=yes
 RestrictRealtime=yes
+SystemCallArchitectures=native
 
 [Install]
 WantedBy=multi-user.target
