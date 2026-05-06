@@ -102,6 +102,8 @@ button.ghost {
   font-weight: 500;
 }
 .profile { border-color: var(--accent); }
+.already { border-color: #4caf50; }
+.already h2 { color: #4caf50; }
 #profile-tile { max-width: 220px; margin: 0 auto 1rem; }
 .share-row {
   display: flex;

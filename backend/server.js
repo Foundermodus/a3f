@@ -110,6 +110,14 @@ app.post('/api/submit', submitLimiter, upload.fields([
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'invalid_email' });
     if (phone && !/^[+0-9 ()/.-]{4,30}$/.test(phone)) return res.status(400).json({ error: 'invalid_phone' });
 
+    // Idempotency: if the same client (browser-installed key) already submitted,
+    // return the existing row instead of creating a duplicate.
+    const idemKey = sanitize(req.get('x-idempotency-key'), 80);
+    if (idemKey) {
+      const existing = db.prepare('SELECT id, code FROM participants WHERE idem_key = ?').get(idemKey);
+      if (existing) return res.json({ ok: true, code: existing.code, duplicate: true });
+    }
+
     const code = crypto.randomBytes(12).toString('hex');
     let stickerImage = null;
     if (photo1?.buffer) {
@@ -122,9 +130,24 @@ app.post('/api/submit', submitLimiter, upload.fields([
       stickerImage2 = `/uploads/${code}-2.jpg`;
     }
 
-    db.prepare(
-      'INSERT INTO participants (code, name, email, phone, sticker_image, sticker_image2) VALUES (?, ?, ?, ?, ?, ?)'
-    ).run(code, name, email || null, phone || null, stickerImage, stickerImage2);
+    try {
+      db.prepare(
+        'INSERT INTO participants (code, name, email, phone, sticker_image, sticker_image2, idem_key) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      ).run(code, name, email || null, phone || null, stickerImage, stickerImage2, idemKey || null);
+    } catch (e) {
+      // race: another concurrent request with the same idem_key won
+      if (idemKey && /UNIQUE/.test(e.message)) {
+        const existing = db.prepare('SELECT code FROM participants WHERE idem_key = ?').get(idemKey);
+        // remove the just-saved orphan files
+        for (const p of [stickerImage, stickerImage2]) {
+          if (p?.startsWith('/uploads/')) {
+            try { await unlink(path.join(UPLOAD_DIR, path.basename(p))); } catch {}
+          }
+        }
+        return res.json({ ok: true, code: existing.code, duplicate: true });
+      }
+      throw e;
+    }
 
     res.json({ ok: true, code });
   } catch (err) {

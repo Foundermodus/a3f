@@ -10,6 +10,36 @@ const statsEl = $('#stats');
 const form = $('#submit-form');
 const formMsg = $('#form-msg');
 const listMsg = $('#list-msg');
+const formCard = $('#form-card');
+const alreadyCard = $('#already-card');
+const submitBtn = form?.querySelector('button[type="submit"]');
+
+function getIdemKey() {
+  let k = null;
+  try { k = localStorage.getItem('a3f.idem'); } catch {}
+  if (!k) {
+    k = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
+    try { localStorage.setItem('a3f.idem', k); } catch {}
+  }
+  return k;
+}
+function getStoredCode() {
+  try { return localStorage.getItem('a3f.code'); } catch { return null; }
+}
+function setStoredCode(code) {
+  try { localStorage.setItem('a3f.code', code); } catch {}
+}
+function clearStoredEntry() {
+  try { localStorage.removeItem('a3f.code'); localStorage.removeItem('a3f.idem'); } catch {}
+}
+function showAlreadyEntered() {
+  alreadyCard.hidden = false;
+  formCard.hidden = true;
+}
+function showForm() {
+  alreadyCard.hidden = true;
+  formCard.hidden = false;
+}
 const sharePageBtn = $('#share-page');
 const shareDialog = $('#share-dialog');
 
@@ -127,20 +157,42 @@ sortSelect.addEventListener('change', loadParticipants);
 
 form.addEventListener('submit', async (ev) => {
   ev.preventDefault();
+  if (submitBtn?.disabled) return;
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.dataset.label = submitBtn.textContent; submitBtn.textContent = 'Sende…'; }
   formMsg.textContent = 'Sende…';
   const fd = new FormData(form);
+  const idem = getIdemKey();
   try {
-    const res = await fetch(`${CONFIG.apiBase}/api/submit`, { method: 'POST', body: fd });
+    const res = await fetch(`${CONFIG.apiBase}/api/submit`, {
+      method: 'POST',
+      body: fd,
+      headers: { 'X-Idempotency-Key': idem },
+    });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-    formMsg.textContent = 'Eingetragen ✓';
+    setStoredCode(data.code);
+    formMsg.textContent = data.duplicate ? 'Du warst schon eingetragen ✓' : 'Eingetragen ✓';
     form.reset();
-    loadParticipants();
+    showAlreadyEntered();
+    await loadParticipants();
     loadStats();
   } catch (err) {
     formMsg.textContent = `Fehler: ${err.message}`;
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = submitBtn.dataset.label || 'Eintragen';
+    }
   }
 });
+
+$('#submit-again')?.addEventListener('click', () => {
+  clearStoredEntry();
+  showForm();
+});
+
+// On boot: if we have a stored code, jump straight to "already entered"
+if (getStoredCode()) showAlreadyEntered();
 
 // Page share button + dialog
 sharePageBtn.addEventListener('click', async () => {

@@ -15,7 +15,13 @@
   </header>
 
   <main>
-    <section class="card">
+    <section id="already-card" class="card already" hidden>
+      <h2>Du bist eingetragen ✓</h2>
+      <p class="muted">Dein Eintrag erscheint in der Liste unten. Wenn du etwas ändern willst, sag dem Veranstalter Bescheid (er kann den Eintrag löschen, danach kannst du neu eintragen).</p>
+      <button id="submit-again" type="button" class="ghost">Trotzdem neuen Eintrag erstellen</button>
+    </section>
+
+    <section id="form-card" class="card">
       <h2>Mitmachen</h2>
       <form id="submit-form" enctype="multipart/form-data">
         <label>Name <input name="name" required maxlength="80" /></label>
