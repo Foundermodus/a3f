@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import multer from 'multer';
 import rateLimit from 'express-rate-limit';
 import sharp from 'sharp';
@@ -12,14 +13,17 @@ import { openDb } from './db.js';
 
 const PORT = Number(process.env.PORT || 3300);
 const HOST = process.env.HOST || '0.0.0.0';
-const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
+const CORS_ORIGIN = process.env.CORS_ORIGIN || '';
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
 const UPLOAD_MAX = Number(process.env.UPLOAD_MAX_BYTES || 8 * 1024 * 1024);
 const DB_PATH = process.env.DB_PATH || './data/a3f.db';
 const UPLOAD_DIR = process.env.UPLOAD_DIR || './uploads';
 
-if (!ADMIN_KEY || ADMIN_KEY === 'change-me-to-a-long-random-string') {
-  console.warn('[a3f] WARNING: ADMIN_KEY is unset or default. Set it in .env before production.');
+if (!ADMIN_KEY || ADMIN_KEY.length < 24) {
+  console.warn('[a3f] WARNING: ADMIN_KEY missing or too short (<24 chars). DELETE endpoint will refuse requests.');
+}
+if (!CORS_ORIGIN) {
+  console.warn('[a3f] WARNING: CORS_ORIGIN unset — refusing all cross-origin requests.');
 }
 
 mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -27,21 +31,53 @@ const db = openDb(DB_PATH);
 
 const app = express();
 app.set('trust proxy', 1);
-app.use(cors({ origin: CORS_ORIGIN === '*' ? true : CORS_ORIGIN.split(',').map(s => s.trim()) }));
+app.disable('x-powered-by');
+
+app.use(helmet({
+  contentSecurityPolicy: false,        // API only, no HTML served
+  crossOriginResourcePolicy: { policy: 'cross-origin' }, // photos consumed from GH Pages origin
+}));
+
+const allowedOrigins = CORS_ORIGIN.split(',').map(s => s.trim()).filter(Boolean);
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);              // curl, server-to-server
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(new Error('cors_blocked'));
+  },
+  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  credentials: false,
+  maxAge: 600,
+}));
+
 app.use(express.json({ limit: '64kb' }));
-app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '7d' }));
+app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '7d', dotfiles: 'deny', index: false }));
 
 const submitLimiter = rateLimit({ windowMs: 60_000, max: 5, standardHeaders: true, legacyHeaders: false });
-const readLimiter = rateLimit({ windowMs: 60_000, max: 120, standardHeaders: true, legacyHeaders: false });
+const readLimiter   = rateLimit({ windowMs: 60_000, max: 120, standardHeaders: true, legacyHeaders: false });
+const adminLimiter  = rateLimit({ windowMs: 60_000, max: 30, standardHeaders: true, legacyHeaders: false });
 
+const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: UPLOAD_MAX, files: 1 },
+  limits: { fileSize: UPLOAD_MAX, files: 1, fields: 10, parts: 12 },
+  fileFilter: (_req, file, cb) => {
+    if (!ALLOWED_MIME.has(file.mimetype)) return cb(new Error('unsupported_mime'));
+    cb(null, true);
+  },
 });
 
+function timingSafeEqStr(a, b) {
+  const ab = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+}
+
 function requireAdmin(req, res, next) {
-  const key = req.get('x-admin-key');
-  if (!ADMIN_KEY || key !== ADMIN_KEY) return res.status(401).json({ error: 'unauthorized' });
+  const key = req.get('x-admin-key') || '';
+  if (!ADMIN_KEY || ADMIN_KEY.length < 24) return res.status(503).json({ error: 'admin_disabled' });
+  if (!timingSafeEqStr(key, ADMIN_KEY)) return res.status(401).json({ error: 'unauthorized' });
   next();
 }
 
@@ -51,16 +87,18 @@ app.get('/health', (_req, res) => {
 
 app.post('/api/submit', submitLimiter, upload.single('photo'), async (req, res) => {
   try {
-    const name = String(req.body.name || '').trim().slice(0, 80);
+    const name = String(req.body.name || "").replace(/[\x00-\x1f\x7f]/g, "").trim().slice(0, 80);
     if (!name) return res.status(400).json({ error: 'name_required' });
     if (!req.file?.buffer) return res.status(400).json({ error: 'photo_required' });
 
     const code = crypto.randomBytes(12).toString('hex');
-    const safe = await sharp(req.file.buffer)
+    const safe = await sharp(req.file.buffer, { limitInputPixels: 24_000_000, failOn: 'error' })
       .rotate()
       .resize({ width: 1024, height: 1024, fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: 82, mozjpeg: true })
+      .withMetadata({})  // strip EXIF
       .toBuffer();
+
     const filename = `${code}.jpg`;
     await writeFile(path.join(UPLOAD_DIR, filename), safe);
     const stickerImage = `/uploads/${filename}`;
@@ -71,7 +109,9 @@ app.post('/api/submit', submitLimiter, upload.single('photo'), async (req, res) 
 
     res.json({ ok: true, code });
   } catch (err) {
-    console.error('[submit]', err);
+    if (err?.message === 'unsupported_mime') return res.status(415).json({ error: 'unsupported_mime' });
+    if (err?.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'file_too_large' });
+    console.error('[submit]', err.message);
     res.status(500).json({ error: 'submit_failed' });
   }
 });
@@ -91,18 +131,21 @@ app.get('/api/stats', readLimiter, (_req, res) => {
   res.json({ total });
 });
 
-app.delete('/api/participants/:id', requireAdmin, (req, res) => {
+app.delete('/api/participants/:id', adminLimiter, requireAdmin, (req, res) => {
   const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'bad_id' });
   const info = db.prepare('DELETE FROM participants WHERE id = ?').run(id);
   res.json({ ok: true, deleted: info.changes });
 });
 
 app.use((err, _req, res, _next) => {
+  if (err?.message === 'cors_blocked') return res.status(403).json({ error: 'cors_blocked' });
   if (err?.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'file_too_large' });
-  console.error('[err]', err);
+  if (err?.message === 'unsupported_mime') return res.status(415).json({ error: 'unsupported_mime' });
+  console.error('[err]', err.message);
   res.status(500).json({ error: 'internal' });
 });
 
 app.listen(PORT, HOST, () => {
-  console.log(`[a3f] listening on http://${HOST}:${PORT}`);
+  console.log(`[a3f] listening on ${HOST}:${PORT} | cors=[${allowedOrigins.join(', ')}]`);
 });

@@ -1,27 +1,11 @@
-// QR rendering helper. Uses kazuhikoarase/qrcode-generator (MIT) loaded from jsDelivr.
+// QR rendering helper. Wraps locally-bundled kazuhikoarase/qrcode-generator (MIT).
 // Exposes window.A3FQR.renderToCanvas(canvas, text).
 (function (global) {
   'use strict';
 
-  let loadPromise = null;
-  function loadLib() {
-    if (global.qrcode) return Promise.resolve();
-    if (loadPromise) return loadPromise;
-    loadPromise = new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js';
-      s.integrity = 'sha256-0sN73x6sJxTxsspiQ0V0YlIWXNjJZ5oUYmzv0YbCwkA=';
-      s.crossOrigin = 'anonymous';
-      s.onload = resolve;
-      s.onerror = () => reject(new Error('qr-lib-load-failed'));
-      document.head.appendChild(s);
-    });
-    return loadPromise;
-  }
-
   async function renderToCanvas(canvas, text, opts) {
     opts = opts || {};
-    await loadLib();
+    if (!global.qrcode) throw new Error('qr-lib-missing');
     // typeNumber 0 = auto; ECC level 'L' = low, gives most capacity
     const qr = global.qrcode(0, 'L');
     qr.addData(text);
