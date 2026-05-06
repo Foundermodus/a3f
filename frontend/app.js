@@ -15,9 +15,9 @@ const shareDialog = $('#share-dialog');
 
 let allParticipants = [];
 
-function imgUrl(p) {
-  if (!p.sticker_image) return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><rect width="1" height="1" fill="%23222"/></svg>';
-  return p.sticker_image.startsWith('http') ? p.sticker_image : `${CONFIG.apiBase}${p.sticker_image}`;
+function imgUrl(src) {
+  if (!src) return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><rect width="1" height="1" fill="%23222"/></svg>';
+  return src.startsWith('http') ? src : `${CONFIG.apiBase}${src}`;
 }
 
 function pageUrl() {
@@ -86,10 +86,15 @@ function render() {
   for (const p of list) {
     const tile = document.createElement('article');
     tile.className = 'tile';
-    const img = document.createElement('img');
-    img.loading = 'lazy';
-    img.alt = p.name;
-    img.src = imgUrl(p);
+    const photos = document.createElement('div');
+    photos.className = p.sticker_image2 ? 'photos two' : 'photos';
+    for (const src of [p.sticker_image, p.sticker_image2].filter(Boolean)) {
+      const img = document.createElement('img');
+      img.loading = 'lazy';
+      img.alt = p.name;
+      img.src = imgUrl(src);
+      photos.append(img);
+    }
     const meta = document.createElement('div');
     meta.className = 'meta';
     const nameEl = document.createElement('div');
@@ -110,7 +115,7 @@ function render() {
       a.textContent = p.phone;
       meta.append(a);
     }
-    tile.append(img, meta);
+    tile.append(photos, meta);
     grid.append(tile);
   }
   if (list.length === 0) listMsg.textContent = 'Noch keine Einträge.';

@@ -64,11 +64,18 @@ button:hover { filter: brightness(1.1); }
   display: flex;
   flex-direction: column;
 }
-.tile img {
+.tile .photos {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+  background: #222;
+}
+.tile .photos.two { grid-template-columns: 1fr 1fr; }
+.tile .photos img {
   width: 100%;
   aspect-ratio: 1;
   object-fit: cover;
-  background: #222;
+  display: block;
 }
 .tile .meta { padding: .5rem .65rem; font-size: .85rem; }
 .tile .label { color: var(--accent); font-weight: 600; }

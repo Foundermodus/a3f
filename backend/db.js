@@ -22,5 +22,6 @@ export function openDb(path) {
   const cols = new Set(db.prepare("PRAGMA table_info(participants)").all().map(r => r.name));
   if (!cols.has('email')) db.exec("ALTER TABLE participants ADD COLUMN email TEXT");
   if (!cols.has('phone')) db.exec("ALTER TABLE participants ADD COLUMN phone TEXT");
+  if (!cols.has('sticker_image2')) db.exec("ALTER TABLE participants ADD COLUMN sticker_image2 TEXT");
   return db;
 }
